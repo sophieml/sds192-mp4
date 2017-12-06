@@ -126,7 +126,7 @@ The second trend that we noticed was that the period of time between the first m
 
 The third trend was the most striking -when we compared the decade groups, we saw that the time between movies and their sequels had decreased significantly. This, in combination with the two other trends, heavily influence public opinion towards movie franchises and sequels in general. Decreased time between movies, along with increased number of movies and longevity, contribute to moviegoers' fatigue and critics frustration-it's hard to appreciate an individual movie on its own merits when it's linked to several others.
 
-Of course, sequels in and of themselves are not necessarily bad per se, as they date back to ancient Greece with famous playwrights such as Sophocles writing follow ups to their plays, including the Oedipus trilogy. When thoughtfully crafted, sequels can prove themselves to be exciting, great successes, with examples including Godfather: Part II and Terminator 2: Judgement Day. But when sequels are being produced at their current rate, rapidly and following nearly every popular film, it feels as though producers are sacrificing quality and creativity in order squeeze out as much profit from a franchise as possible. This leaves us with movies like Hangover: Part III.
+Of course, sequels in and of themselves are not necessarily bad per se, as they date back to ancient Greece with famous playwrights such as Sophocles writing follow ups to their plays, including the Oedipus trilogy. When thoughtfully crafted, sequels can prove themselves to be exciting, great successes, with examples including Godfather: Part II and Terminator 2: Judgement Day. But when sequels are being produced at their current rate, rapidly and following nearly every popular film, it feels as though producers are sacrificing quality and creativity in order to squeeze out as much profit from a franchise as possible. This leaves us with movies like Hangover: Part III.
 
 Aaron Hatch from The Artifice takes an opposing stance: that, in proportional terms, sequels are actually less common. And he's right.
 ```{r, warning= FALSE}
@@ -148,7 +148,8 @@ nratio <- nall %>%
   mutate(ratio = numSeq / numAll)
 
 ggplot(nratio, aes(x = decade, y = ratio)) +
-  geom_line()
+  geom_line() +
+  scale_x_continuous(breaks = seq(from = 1920, to = 2020, by = 10))
 ```
 
 The figure above is a line graph of sequels, remakes, and spinoffs as a proportion of all movies produced. If we only used this as criteria, claims about the proportions of sequels would be unfounded.
