@@ -150,8 +150,9 @@ nratio <- nall %>%
 ggplot(nratio, aes(x = decade, y = ratio)) +
   geom_bar(stat = 'identity', colour = 'red', fill = 'red') +
   scale_x_continuous(breaks = seq(from = 1920, to = 2010, by = 10), limits = c(1910, 2020)) + 
+  scale_y_continuous(expand = c(0,0))+
   labs(title = 'Ratio of Sequels to Total Movies Produced in a Decade', y = 'Ratio', x = 'Decade') +
-  theme(panel.grid.minor.x = element_blank())
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
 ```
 
 The figure above is a line graph of sequels, remakes, and spinoffs as a proportion of all movies produced. If we only used this as criteria, claims about the proportions of sequels would be unfounded.
