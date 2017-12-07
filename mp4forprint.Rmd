@@ -1,0 +1,231 @@
+---
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+##Franchise Fatigue: Fact or Fiction?
+###Rocio Jaime and Sophie Li
+
+The release of Star Wars: The Last Jedi comes just months after the franchise's 30th anniversary. In those three decades, Star Wars expanded to a series of eight main films (with more to come), with countless spinoffs and adaptations.
+
+If you think that these rapid-fire releases have expanded beyond the Galactic Empire, you're not alone. Many people notice this trend, from the average moviegoer to the most influential film critics have noticed this trend as well. In an article written for ESPN's sports and pop-culture blog, Grantland, Mark Harris claimed that "franchises are not a big part of the movie business. They are not the biggest part of the movie business. They are the movie business."[^1]
+
+We decided to test this popular assumption by tracking the number of sequels per original movie over time. What we found confirmed Harris's claim: The frequency of sequels, remakes, and spinoffs has increased dramatically - and not only are studios making sequels at a faster pace for recent movies, they're also digging into the past for inspiration for the future.
+```{r, message = FALSE, warning = FALSE, fig.height=15, fig.width=18}
+library(mdsr)
+library(RMySQL)
+library(ggridges)
+library(knitr)
+
+db <- dbConnect_scidb(dbname = "imdb")
+
+#Gets info on sequels, remakes, and spinoffs
+#Uses indexes on type_ids
+sequel_info <- db %>%
+  dbGetQuery("SELECT ml.movie_id, t.title, mi.info AS original_runtime, ml.linked_movie_id AS sequel_id, t2.title AS sequel_title, mi2.info AS sequel_runtime, ml.link_type_id, t.production_year AS original_year, t2.production_year AS sequel_year
+FROM movie_link ml
+JOIN title t ON t.id = ml.movie_id
+JOIN title t2 ON t2.id = linked_movie_id
+JOIN movie_info mi ON mi.movie_id = ml.movie_id
+JOIN movie_info mi2 ON mi2.movie_id = ml.linked_movie_id
+WHERE ml.link_type_id IN (2, 4, 12)
+	AND t.kind_id = 1
+  AND mi.info_type_id = 1 
+  AND mi2.info_type_id = 1
+  AND mi.info > 89
+  AND mi2.info > 89;
+")
+
+all_movies <- db %>%
+  dbGetQuery("SELECT t.id AS movie_id, t.title, mi.info AS original_runtime, t.production_year AS original_year
+FROM title t
+JOIN movie_info mi ON mi.movie_id = t.id
+WHERE t.kind_id = 1
+  AND mi.info_type_id = 1 
+  AND mi.info > 89
+")
+
+
+#gets gross of movies (max cumulative gross in USA only, due to constraints w/ format of data)
+gross <- db %>% 
+  dbGetQuery('SELECT mi.movie_id, mi.info AS gross
+             FROM movie_info mi
+             WHERE mi.info_type_id = 107;
+             ') %>% 
+  filter(grepl('\\$', gross)) %>% 
+  filter(grepl('\\(USA)', gross)) %>% 
+  mutate(gross = gsub('\\s.*', '', gross)) %>%
+  mutate(gross = gsub('\\D', '', gross)) %>%
+  mutate(gross = as.numeric(gross)) %>%
+  group_by(movie_id) %>% 
+  summarize(max_gross = max(gross)) %>% 
+  arrange(desc(max_gross))
+
+#filters for duplicates (so only original movie shows up, w/ sequels linking to it)
+#adds decade column
+sequel_info <- sequel_info %>% 
+  filter(!(title %in% sequel_title)) %>% 
+  mutate(decade = 10 * floor(original_year / 10)) %>% 
+  select(movie_id, title, original_year, decade, sequel_title, sequel_year, link_type_id) %>%
+  left_join(gross, movie_id = movie_id) %>% 
+  unique()
+
+all_movies <- all_movies %>% 
+  mutate(decade = 10 * floor(original_year / 10)) %>% 
+  left_join(gross, movie_id = movie_id) %>% 
+  unique()
+
+#Function that finds top 10 grossing movies
+top10 <- function(data) {
+  data %>%
+    group_by(title) %>%
+    summarize(top_movies = max(max_gross)) %>%
+    arrange(desc(top_movies)) %>%
+    head(10)
+}
+
+#Finds top 10 grossing movies per decade
+top_sequels_decade <- sequel_info %>% 
+  filter(!is.na(max_gross)) %>% 
+  group_by(decade) %>%
+  do(top10(.))
+
+#Calculates popular sequels
+pop_seq <- sequel_info %>% 
+  filter(title %in% top_sequels_decade$title & !is.na(max_gross)) %>% 
+  select(decade, title, original_year, sequel_title, sequel_year, link_type_id) %>% 
+  mutate(title = reorder(title, original_year)) %>% 
+  mutate(link_type_id = factor(link_type_id))
+
+ggplot(pop_seq, aes(x = original_year, y = title)) +
+  geom_segment(aes(xend = sequel_year, yend = title), size = 1) +
+  geom_point(size = 4) +
+  geom_point(aes(x = sequel_year, y = title, shape = link_type_id), fill = 'white', size = 4) +
+  labs(color = 'Type of Movie', title = "Sequels/Remakes/Spinoffs Produced by Decade", x = "Release Year of Original Movie", y = "Movie Title") +
+  theme(axis.text.x = element_text(size= 15),
+        axis.text.y = element_text(size = 11),
+        plot.title = element_text(size = 28),
+        strip.text.x = element_text(size = 14),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size= 14),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        panel.background = element_blank(),
+        strip.background = element_blank()) +
+  scale_shape_manual(values = c(21, 22, 23), labels = c('Sequel', 'Remake', 'Spin-off')) +
+  scale_y_discrete(labels = scales::wrap_format(40)) +
+  scale_x_continuous(limits = c(1910, 2020), expand = c(0, 0)) +
+  facet_wrap( ~ decade, nrow = 5, scales = "free_y") 
+```
+The data in this visualization came from the IMDb (Internet Movie Database). We chose to filter for movies that were 90 minutes or longer, to control for 'movie shorts' that were categorized as feature-length movies in the database.
+
+After creating a list of every movie greater than ninety minutes that had either a sequel, remake, or spinoff, we graphed the timelines of the top-ten grossing original movies for each decade.
+
+When creating the graphic, we assumed that movies released more recently would not have as much sequel data, but in fact, although the segments for movies released in the 21st century are shorter, the total of follow up dots is about the same as previous decades. This means that movies released more recently have about the same amount of follow ups as other decades, but the amount of follow ups was produced in less time, meaning sequels/follow ups are becoming more frequent.
+
+This may be caused by behaviors from both moviegoers and movie executives. The renowned film critic Roger Ebert claimed "no movie executive has ever been fired for greenlighting a sequel. Once a brand has been established in the marketplace, it makes sound business sense to repeat the formula."[^2] When an original movie is well executed, members of the audience are more likely to become invested in the plot and characters, and eventually a fandom forms. If there is a large fandom for a specific film, producers can assume that a sequel for a film will have a strong turn out, bringing in more money for the franchise. It's an easy way for film makers to make money; instead of producing brand new ideas, they can build off a story that is already established. With both sides of the producing and consuming cycles supporting the creation and consumption of sequels, it's no wonder they're as popular to make and watch as they are.
+
+Another possible explanation for the increasing frequency of sequels could be the increased popularity of adaptations of books to movies. The 2000s is when we find adaptations of Harry Potter, Lord of the Rings, The Chronicles of Narnia, and the Hunger Games, all of which are series. So these multiple, consecutive sequels aren't necessarily due to a lack of creativity, but because each book in a series gets to have its own movie. This is also sensible on the producers' parts, because if an entire book series were put into one singular movie, they would have to chose between detail or length, and they would lose potential money by not having the audience pay to see separate movies.
+
+Of course, sequels in and of themselves are not necessarily bad per se, as they date back to ancient Greece with famous playwrights such as Sophocles writing follow ups to their plays, including the Oedipus trilogy. When thoughtfully crafted, sequels can prove themselves to be exciting, great successes, with examples including Godfather: Part II and Terminator 2: Judgement Day. But when sequels are being produced at their current rate, rapidly and following nearly every popular film, it feels as though producers are sacrificing quality and creativity in order to squeeze out as much profit from a franchise as possible. This leaves us with movies like Hangover: Part III.
+
+Aaron Hatch from The Artifice[^3] takes an opposing stance: that, in proportional terms, sequels are actually less common.[^4] And he's (technically) right.
+```{r,  message = FALSE, warning = FALSE, fig.height=4, fig.width = 10}
+nall <- all_movies %>% 
+  filter(!is.na(max_gross)) %>% 
+  group_by(decade, title) %>% 
+  summarize(n = n()) %>% 
+  group_by(decade) %>% 
+  summarize(numAll = sum(n))
+
+nseq <- sequel_info %>% 
+  filter(!is.na(max_gross)) %>% 
+  group_by(decade, link_type_id) %>% 
+  summarize(numSeq = n()) %>% 
+  left_join(nall)
+# 
+# nratio <- nall %>% 
+#   left_join(nseq) %>% 
+#   mutate(ratio = numSeq / numAll)
+# 
+# ggplot(nratio, aes(x = decade, y = ratio)) +
+#   geom_bar(stat = 'identity', colour = 'red', fill = 'red') +
+#   scale_x_continuous(breaks = seq(from = 1920, to = 2010, by = 10), limits = c(1910, 2020)) +
+#   scale_y_continuous(expand = c(0,0))+
+#   labs(title = 'Ratio of Sequels to Total Movies Produced in a Decade', y = 'Ratio', x = 'Decade') +
+#   theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+sequel_info2 <- sequel_info %>% 
+  mutate(decade = 10 * floor(sequel_year / 10))
+
+ggplot(nseq, aes(x = decade, y = numSeq / numAll, color = factor(link_type_id))) +
+  geom_col(position = 'stack', alpha = 0, fill = 'white') +
+  scale_fill_discrete(labels = c('Sequel', 'Remake', 'Spin-off'), name = 'Type of Movie') +
+  scale_x_continuous(breaks = seq(from = 1920, to = 2010, by = 10), limits = c(1910, 2020)) + 
+  scale_y_continuous(expand = c(0,0))+
+  labs(title = 'Ratio of Follow-up Movies to Total Movies Produced in a Decade', y = 'Ratio', x = 'Decade') +
+  theme(panel.background = element_blank(), panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+```
+
+This bar graph shows sequels, remakes, and spinoffs as a proportion of all movies produced, separated by decade. According to this, the number of sequels per movie peaked in the 30's and 70's.
+
+However, this approach disregards many other factors that affect our individual perception of sequels.
+
+For example, the average time in length between movies and their sequels has decreased dramatically over the years:
+```{r,  message = FALSE, warning = FALSE, results = 'asis'}
+sequel_info %>% 
+  filter(!is.na(max_gross)) %>% 
+  group_by(decade, title) %>% 
+  arrange(sequel_year, .by_group = TRUE) %>% 
+  summarize(mPerMovie = mean(diff(c(original_year, sequel_year)))) %>% 
+  group_by(decade) %>% 
+  summarize(m = mean(mPerMovie)) %>% 
+  kable(align = c('l'), 
+        col.names = c('Decade', 'Average Time between Follow-Up Movies (Years)'),
+        format = 'html')
+```
+
+This trend is still clear, even when setting a limit on the number of years between the original movie and the sequel (to control for earlier decades having a longer time period for sequel production):
+
+<div class = "row">
+<div class = "col-md-6">
+```{r,  message = FALSE, warning = FALSE, fig.height=4, fig.width = 4, dev=c('svg'), results = 'asis'}
+limit_10yrs <- sequel_info %>% 
+  filter(!is.na(max_gross)) %>%
+  filter(sequel_year - original_year < 11) %>% 
+  mutate(decade = factor(decade)) %>%
+  group_by(decade, sequel_title, link_type_id) %>%
+  arrange(sequel_year, .by_group = TRUE) %>% 
+  mutate(mPerMovie = mean(diff(c(original_year, sequel_year))))
+
+ggplot(limit_10yrs, aes(x = mPerMovie, y = factor(decade, rev(levels(decade))), group = decade)) +
+  geom_density_ridges(fill = 'white') +
+  ggtitle('Time Between Original Movies\nand their Sequels') +
+  scale_x_continuous(name = 'Years between Original Movie and Sequel',
+                     limits = c(0,10),
+                     expand = c(0,0),
+                     breaks = seq(from = 0, to = 10, by = 1)) +
+  scale_y_discrete(name = 'Decade') +
+  theme_ridges() +
+  theme(axis.text.x = element_text(size = 12),
+        axis.text.y = element_text(size = 12))
+```
+</div>
+<div class = "col-md-6">
+
+```{r,  message = FALSE, warning = FALSE, dev=c('svg')}
+limit_10yrs %>% 
+  group_by(decade) %>% 
+  summarize(n = mean(mPerMovie)) %>% 
+  kable(align = c('l'),
+        col.names = c('Decade', 'Average Time between Follow-Up Movies (Years)'),
+        format = 'html'
+        )
+```
+<p style="font-size:10pt;">Restricted to sequels/remakes/spinoffs made within 10 years of the original movie's release</p>
+</div>
+</div>
+In addition, Hatch's claim does not take into account that many of the original films included in the IMDb database were small-scale in nature (unknown to the average moviegoer). The volume of movies that have been released is somewhat misleading, as it downplays name recognition's influence on our views of the industry. Though this may be true in some industries, it is not true in film: movie franchises are almost exclusively produced by major studios, which have far larger reaches than small, independent companies.
+	
+Although Hollywood is putting out less sequels as a percentage on the whole, that does not change the fact that we perceive the amount of sequels to be increasing. In particular, increasing longevity of franchises and decreasing time between movies creates the illusion that sequels have completely taken over Hollywood. Martin Kaplan, a professor of film and media at the University of Southern California, explains this trend well: "in an unsettling world people may gravitate toward the familiar...sequels are a kind of comfort food."[^5] In order to change this trend, we must all make conscious shifts in their mindsets. It will involve risk, but choosing the new and unknown over the predictably comforting is the only way we'll stop franchise fatigue anytime soon.
