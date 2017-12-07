@@ -6,17 +6,18 @@ output:
   html_document:
     code_folding: hide
 ---
-#The Popularity of Sequels Over the Decades
-##Using SQL and the imdb database
+#Franchise Fatigue: Fact or Fiction?
 
-The release of Star Wars: The Last Jedi comes just months after the franchise's 30th anniversary. In only three decades, Star Wars expanded to a series of eight main films (with more to come), with countless spinoffs and adaptations.
+The release of Star Wars: The Last Jedi comes just months after the franchise's 30th anniversary. In those three decades, Star Wars expanded to a series of eight main films (with more to come), with countless spinoffs and adaptations.
 
-If it seems like these rapid-fire releases have expanded beyond the Galactic Empire, you're not alone. In an article written for ESPN's sports and pop-culture blog, Grantland, Mark Harris claimed that " franchises are not a big part of the movie business. They are not the biggest part of the movie business. They are the movie business."
-We decided to test this popular assumption by tracking the number of sequels per original movie over time. What we found confirmed Harris's claim: The frequency of sequels, remakes, and spinoffs has increased dramatically-not only are studios making sequels at a faster pace for recent movies, they're also digging into the past for inspiration for the future.
-```{r, message = FALSE, warning = FALSE, fig.height=15, fig.width=20}
+If you think that these rapid-fire releases have expanded beyond the Galactic Empire, you're not alone. Many people notice this trend, from the average moviegoer to the most influential film critics have noticed this trend as well. In an article written for ESPN's sports and pop-culture blog, Grantland, Mark Harris claimed that "franchises are not a big part of the movie business. They are not the biggest part of the movie business. They are the movie business."[^1]
+
+We decided to test this popular assumption by tracking the number of sequels per original movie over time. What we found confirmed Harris's claim: The frequency of sequels, remakes, and spinoffs has increased dramatically - and not only are studios making sequels at a faster pace for recent movies, they're also digging into the past for inspiration for the future.
+```{r, message = FALSE, warning = FALSE, fig.height=15, fig.width=18}
 library(mdsr)
 library(RMySQL)
 library(ggridges)
+library(knitr)
 
 db <- dbConnect_scidb(dbname = "imdb")
 
@@ -116,62 +117,77 @@ ggplot(pop_seq, aes(x = original_year, y = title)) +
   scale_x_continuous(limits = c(1910, 2020), expand = c(0, 0)) +
   facet_wrap( ~ decade, nrow = 5, scales = "free_y") 
 ```
-Our analyses were made by searching through the IMDb (Internet Movie Database), and creating a list of every US movie greater than ninety minutes that had either a sequel, remake, or spinoff. We then grouped each movie by the decade of the original movie's release date and only included the top ten grossing movies of that decade. The movies were then graphed and separated by their decade group in order to more clearly see the progression of sequel release patterns as time passed.
+The data in this visualization came from the IMDb (Internet Movie Database). We chose to filter for movies that were 90 minutes or longer, to control for 'movie shorts' that were categorized as feature-length movies in the database.
 
-There seem to be two main trends occurring over the years. First, that successful movie franchises are growing larger in terms of number of sequels per top 10 movie. This may be caused by behaviors from both moviegoers and movie executives. According to Martin Kaplan, a professor of film and media at the University of Southern California, "in an unsettling world people may gravitate toward the familiar...sequels are a kind of comfort food."
-This trend occurs on the production side as well.  Because of this constant baseline audience, movie studios may be less likely to spend money developing risky, original movies.
+After creating a list of every movie greater than ninety minutes that had either a sequel, remake, or spinoff, we graphed the timelines of the top-ten grossing original movies for each decade.
 
-The renowned film critic Roger Ebert claimed "no movie executive has ever been fired for greenlighting a sequel. Once a brand has been established in the marketplace, it makes sound business sense to repeat the formula." With both sides of the producing and consuming cycles supporting the creation and consumption of sequels, it's no wonder they're as popular to make and watch as they are.
-  
-The second trend that we noticed was that the period of time between the first movie of the series and the last movie of the series has grown over the years.This trend seems logical, given that older movies have more time to be remade-but it still shows that Hollywood studios turn to the past for new inspiration. Though the sequels, remakes, and reboots that come from this may have little in common with their predecessors, they still contribute to the perception that Hollywood is losing its originality.
+When creating the graphic, we assumed that movies released more recently would not have as much sequel data, but in fact, although the segments for movies released in the 21st century are shorter, the total of follow up dots is about the same as previous decades. This means that movies released more recently have about the same amount of follow ups as other decades, but the amount of follow ups was produced in less time, meaning sequels/follow ups are becoming more frequent.
 
-The third trend was the most striking -when we compared the decade groups, we saw that the time between movies and their sequels had decreased significantly. This, in combination with the two other trends, heavily influence public opinion towards movie franchises and sequels in general. Decreased time between movies, along with increased number of movies and longevity, contribute to moviegoers' fatigue and critics frustration-it's hard to appreciate an individual movie on its own merits when it's linked to several others.
+This may be caused by behaviors from both moviegoers and movie executives. The renowned film critic Roger Ebert claimed "no movie executive has ever been fired for greenlighting a sequel. Once a brand has been established in the marketplace, it makes sound business sense to repeat the formula."[^2] When an original movie is well executed, members of the audience are more likely to become invested in the plot and characters, and eventually a fandom forms. If there is a large fandom for a specific film, producers can assume that a sequel for a film will have a strong turn out, bringing in more money for the franchise. It's an easy way for film makers to make money; instead of producing brand new ideas, they can build off a story that is already established. With both sides of the producing and consuming cycles supporting the creation and consumption of sequels, it's no wonder they're as popular to make and watch as they are.
+
+Another possible explanation for the increasing frequency of sequels could be the increased popularity of adaptations of books to movies. The 2000s is when we find adaptations of Harry Potter, Lord of the Rings, The Chronicles of Narnia, and the Hunger Games, all of which are series. So these multiple, consecutive sequels aren't necessarily due to a lack of creativity, but because each book in a series gets to have its own movie. This is also sensible on the producers' parts, because if an entire book series were put into one singular movie, they would have to chose between detail or length, and they would lose potential money by not having the audience pay to see separate movies.
 
 Of course, sequels in and of themselves are not necessarily bad per se, as they date back to ancient Greece with famous playwrights such as Sophocles writing follow ups to their plays, including the Oedipus trilogy. When thoughtfully crafted, sequels can prove themselves to be exciting, great successes, with examples including Godfather: Part II and Terminator 2: Judgement Day. But when sequels are being produced at their current rate, rapidly and following nearly every popular film, it feels as though producers are sacrificing quality and creativity in order to squeeze out as much profit from a franchise as possible. This leaves us with movies like Hangover: Part III.
 
-Aaron Hatch from The Artifice takes an opposing stance: that, in proportional terms, sequels are actually less common. And he's right.
-```{r, warning= FALSE}
-nseq <- sequel_info %>% 
-  filter(!is.na(max_gross)) %>% 
-  group_by(decade, title) %>% 
-  summarize(n = n()) %>% 
-  group_by(decade) %>% 
-  summarize(numSeq = sum(n))
-
+Aaron Hatch from The Artifice[^3] takes an opposing stance: that, in proportional terms, sequels are actually less common.[^4] And he's (technically) right.
+```{r,  message = FALSE, warning = FALSE}
 nall <- all_movies %>% 
   filter(!is.na(max_gross)) %>% 
   group_by(decade, title) %>% 
   summarize(n = n()) %>% 
   group_by(decade) %>% 
   summarize(numAll = sum(n))
-nratio <- nall %>% 
-  left_join(nseq) %>% 
-  mutate(ratio = numSeq / numAll)
 
-ggplot(nratio, aes(x = decade, y = ratio)) +
-  geom_bar(stat = 'identity', colour = 'red', fill = 'red') +
+nseq <- sequel_info %>% 
+  filter(!is.na(max_gross)) %>% 
+  group_by(decade, link_type_id) %>% 
+  summarize(numSeq = n()) %>% 
+  left_join(nall)
+# 
+# nratio <- nall %>% 
+#   left_join(nseq) %>% 
+#   mutate(ratio = numSeq / numAll)
+# 
+# ggplot(nratio, aes(x = decade, y = ratio)) +
+#   geom_bar(stat = 'identity', colour = 'red', fill = 'red') +
+#   scale_x_continuous(breaks = seq(from = 1920, to = 2010, by = 10), limits = c(1910, 2020)) +
+#   scale_y_continuous(expand = c(0,0))+
+#   labs(title = 'Ratio of Sequels to Total Movies Produced in a Decade', y = 'Ratio', x = 'Decade') +
+#   theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+sequel_info2 <- sequel_info %>% 
+  mutate(decade = 10 * floor(sequel_year / 10))
+
+ggplot(nseq, aes(x = decade, y = numSeq / numAll, fill = factor(link_type_id))) +
+  geom_col(position = 'stack') +
+  scale_fill_discrete(labels = c('Sequel', 'Remake', 'Spin-off'), name = 'Type of Movie') +
   scale_x_continuous(breaks = seq(from = 1920, to = 2010, by = 10), limits = c(1910, 2020)) + 
   scale_y_continuous(expand = c(0,0))+
-  labs(title = 'Ratio of Sequels to Total Movies Produced in a Decade', y = 'Ratio', x = 'Decade') +
+  labs(title = 'Ratio of Follow-up Movies to Total Movies Produced in a Decade', y = 'Ratio', x = 'Decade') +
   theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
 ```
 
-The figure above is a bar graph of sequels, remakes, and spinoffs as a proportion of all movies produced. If we only used this as criteria, claims about the proportions of sequels would be unfounded.
+This bar graph shows sequels, remakes, and spinoffs as a proportion of all movies produced, separated by decade. According to this, the number of sequels per movie peaked in the 30's and 70's.
 
-However, this approach is problematic because it disregards all other factors that influence human opinion. For example, the mean length between movies and their sequels decreases by a far larger factor than the proportion of sequels to original movies:
-```{r}
+However, this approach disregards many other factors that affect our individual perception of sequels.
+
+For example, the average time in length between movies and their sequels has decreased dramatically over the years:
+```{r,  message = FALSE, warning = FALSE, results = 'asis'}
 sequel_info %>% 
   filter(!is.na(max_gross)) %>% 
   group_by(decade, title) %>% 
   arrange(sequel_year, .by_group = TRUE) %>% 
   summarize(mPerMovie = mean(diff(c(original_year, sequel_year)))) %>% 
   group_by(decade) %>% 
-  summarize(m = mean(mPerMovie))
+  summarize(m = mean(mPerMovie)) %>% 
+  kable(align = c('l'), 
+        col.names = c('Decade', 'Average Time between Follow-Up Movies (Years)'))
 ```
 
-Of course, the amount of time is a confounding factor. However, the trend of decreasing time between sequels is still clear, even when limiting the amount of time between an original movie and its successors:
+This trend is still clear, even when setting a limit on the number of years between the original movie and the sequel (to control for earlier decades having a longer time period for sequel production):
 
-```{r, fig.height=5, fig.width = 5}
+<div class = "row">
+<div class = "col-md-6">
+```{r,  message = FALSE, warning = FALSE, fig.height=5, fig.width = 5, dev=c('svg'), results = 'asis'}
 limit_10yrs <- sequel_info %>% 
   filter(!is.na(max_gross)) %>%
   filter(sequel_year - original_year < 11) %>% 
@@ -182,13 +198,37 @@ limit_10yrs <- sequel_info %>%
 
 ggplot(limit_10yrs, aes(x = mPerMovie, y = factor(decade, rev(levels(decade))), group = decade)) +
   geom_density_ridges() +
-  scale_x_continuous(limits = c(0,10),
+  ggtitle('Time Between Original Movies\nand their Sequels') +
+  scale_x_continuous(name = 'Years between Original Movie and Sequel',
+                     limits = c(0,10),
                      expand = c(0,0),
                      breaks = seq(from = 0, to = 10, by = 1)) +
-  theme_ridges()
+  scale_y_discrete(name = 'Decade') +
+  theme_ridges() +
+  theme(axis.text.x = element_text(size = 12),
+        axis.text.y = element_text(size = 12))
 ```
+</div>
+<div class = "col-md-6">
 
-In addition, Hatch's claim does not take into account that many of the original films included in the IMDb database were small-scale in nature (unknown to the average moviegoer). The volume of movies that have been released is somewhat misleading, as it assumes that quantity overrules name recognition in terms of influence. Though this may be true in some industries, it is not true in film: movie franchises are almost exclusively produced by major studios, which have far larger reaches than small, independent companies.
-
+```{r,  message = FALSE, warning = FALSE, dev=c('svg')}
+limit_10yrs %>% 
+  group_by(decade) %>% 
+  summarize(n = mean(mPerMovie)) %>% 
+  kable(align = c('l'),
+        col.names = c('Decade', 'Average Time between Follow-Up Movies (Years)'),
+        format = 'markdown'
+        )
+```
+<p style="font-size:10pt;">Restricted to sequels/remakes/spinoffs made within 10 years of the original movie's release</p>
+</div>
+</div>
+In addition, Hatch's claim does not take into account that many of the original films included in the IMDb database were small-scale in nature (unknown to the average moviegoer). The volume of movies that have been released is somewhat misleading, as it downplays name recognition's influence on our views of the industry. Though this may be true in some industries, it is not true in film: movie franchises are almost exclusively produced by major studios, which have far larger reaches than small, independent companies.
 	
-Although Hollywood is putting out less sequels as a percentage on the whole, that does not change the fact that we perceive the amount of sequels to be increasing. In particular, increasing longevity of franchises and decreasing time between movies creates the illusion that sequels have completely taken over Hollywood. In order to change this trend, moviegoers must make conscious shifts in their mindsets. It will involve risk, but choosing the new and unknown over the predictably comforting is the only way this pattern will change any time soon.
+Although Hollywood is putting out less sequels as a percentage on the whole, that does not change the fact that we perceive the amount of sequels to be increasing. In particular, increasing longevity of franchises and decreasing time between movies creates the illusion that sequels have completely taken over Hollywood. Martin Kaplan, a professor of film and media at the University of Southern California, explains this trend well: "in an unsettling world people may gravitate toward the familiar...sequels are a kind of comfort food."[^5] In order to change this trend, we must all make conscious shifts in their mindsets. It will involve risk, but choosing the new and unknown over the predictably comforting is the only way we'll stop franchise fatigue anytime soon.
+
+[^1]:http://grantland.com/features/2014-hollywood-blockbusters-franchises-box-office/
+[^2]:http://www.newsweek.com/roger-ebert-sequels-and-unoriginality-hollywood-67595
+[^3]:From website description: 'The Artifice is an online magazine that covers a wide spectrum of art forms.'
+[^4]:https://the-artifice.com/original-films-in-hollywood-deconstructing-the-backlash-against-american-cinema/
+[^5]:http://www.nytimes.com/2011/12/29/movies/sequels-ruled-hollywood-in-2011.html
