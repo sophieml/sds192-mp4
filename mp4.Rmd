@@ -16,6 +16,7 @@ We decided to test this popular assumption by tracking the number of sequels per
 ```{r, message = FALSE, warning = FALSE, fig.height=15, fig.width=20}
 library(mdsr)
 library(RMySQL)
+library(ggridges)
 
 db <- dbConnect_scidb(dbname = "imdb")
 
@@ -155,10 +156,9 @@ ggplot(nratio, aes(x = decade, y = ratio)) +
   theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
 ```
 
-The figure above is a line graph of sequels, remakes, and spinoffs as a proportion of all movies produced. If we only used this as criteria, claims about the proportions of sequels would be unfounded.
+The figure above is a bar graph of sequels, remakes, and spinoffs as a proportion of all movies produced. If we only used this as criteria, claims about the proportions of sequels would be unfounded.
 
 However, this approach is problematic because it disregards all other factors that influence human opinion. For example, the mean length between movies and their sequels decreases by a far larger factor than the proportion of sequels to original movies:
-
 ```{r}
 sequel_info %>% 
   filter(!is.na(max_gross)) %>% 
@@ -168,6 +168,26 @@ sequel_info %>%
   group_by(decade) %>% 
   summarize(m = mean(mPerMovie))
 ```
+
+Of course, the amount of time is a confounding factor. However, the trend of decreasing time between sequels is still clear, even when limiting the amount of time between an original movie and its successors:
+
+```{r, fig.height=5, fig.width = 5}
+limit_10yrs <- sequel_info %>% 
+  filter(!is.na(max_gross)) %>%
+  filter(sequel_year - original_year < 11) %>% 
+  mutate(decade = factor(decade)) %>%
+  group_by(decade, sequel_title, link_type_id) %>%
+  arrange(sequel_year, .by_group = TRUE) %>% 
+  mutate(mPerMovie = mean(diff(c(original_year, sequel_year))))
+
+ggplot(limit_10yrs, aes(x = mPerMovie, y = factor(decade, rev(levels(decade))), group = decade)) +
+  geom_density_ridges() +
+  scale_x_continuous(limits = c(0,10),
+                     expand = c(0,0),
+                     breaks = seq(from = 0, to = 10, by = 1)) +
+  theme_ridges()
+```
+
 In addition, Hatch's claim does not take into account that many of the original films included in the IMDb database were small-scale in nature (unknown to the average moviegoer). The volume of movies that have been released is somewhat misleading, as it assumes that quantity overrules name recognition in terms of influence. Though this may be true in some industries, it is not true in film: movie franchises are almost exclusively produced by major studios, which have far larger reaches than small, independent companies.
 
 	
