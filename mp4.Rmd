@@ -161,11 +161,11 @@ ggplot(nseq, aes(x = decade, y = numSeq / numAll, fill = factor(link_type_id))) 
   scale_fill_discrete(labels = c('Sequel', 'Remake', 'Spin-off'), name = 'Type of Movie') +
   scale_x_continuous(breaks = seq(from = 1920, to = 2010, by = 10), limits = c(1910, 2020)) + 
   scale_y_continuous(expand = c(0,0))+
-  labs(title = 'Ratio of Follow-up Movies to Total Movies Produced in a Decade', y = 'Ratio', x = 'Decade') +
-  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
+  labs(title = 'Ratio of Follow-up Movies to Total Movies Produced in a Decade', y = 'Ratio', x = 'Decade', caption = "This bar graph shows sequels, remakes, and spinoffs as a proportion of all movies produced.") +
+  theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank(),
+        plot.caption = element_text(size = 8))
 ```
 
-This bar graph shows sequels, remakes, and spinoffs as a proportion of all movies produced, separated by decade. According to this, the number of sequels per movie peaked in the 30's and 70's.
 
 However, this approach disregards many other factors that affect our individual perception of sequels.
 
