@@ -16,7 +16,7 @@ We decided to test this popular assumption by tracking the number of sequels per
 ```{r, message = FALSE, warning = FALSE, fig.height=15, fig.width=18}
 library(mdsr)
 library(RMySQL)
-library(ggridges)
+library(ggplot2)
 library(knitr)
 
 db <- dbConnect_scidb(dbname = "imdb")
@@ -103,10 +103,11 @@ ggplot(pop_seq, aes(x = original_year, y = title)) +
   geom_segment(aes(xend = sequel_year, yend = title), size = 2) +
   geom_point(size = 3) +
   geom_point(aes(x = sequel_year, y = title, color = link_type_id), size = 3) +
-  labs(color = 'Type of Movie', title = "Sequels/Remakes/Spinoffs Produced by Decade", x = "Release Year of Original Movie", y = "Movie Title") +
+  labs(color = 'Type of Movie', title = "Sequels/Remakes/Spinoffs Produced by Decade", x = "Release Year of Original Movie", y = "Movie Title", caption = "(Based on data from IMDb) Each panel includes the top ten grossing movie of that decade.") +
   theme(axis.text.x = element_text(size= 15),
         axis.text.y = element_text(size = 11),
         plot.title = element_text(size = 28),
+        plot.caption = element_text(size = 12.5),
         strip.text.x = element_text(size = 14),
         legend.title = element_text(size = 16),
         legend.text = element_text(size= 14),
@@ -117,9 +118,7 @@ ggplot(pop_seq, aes(x = original_year, y = title)) +
   scale_x_continuous(limits = c(1910, 2020), expand = c(0, 0)) +
   facet_wrap( ~ decade, nrow = 5, scales = "free_y") 
 ```
-The data in this visualization came from the IMDb (Internet Movie Database). We chose to filter for movies that were 90 minutes or longer, to control for 'movie shorts' that were categorized as feature-length movies in the database.
 
-After creating a list of every movie greater than ninety minutes that had either a sequel, remake, or spinoff, we graphed the timelines of the top-ten grossing original movies for each decade.
 
 When creating the graphic, we assumed that movies released more recently would not have as much sequel data, but in fact, although the segments for movies released in the 21st century are shorter, the total of follow up dots is about the same as previous decades. This means that movies released more recently have about the same amount of follow ups as other decades, but the amount of follow ups was produced in less time, meaning sequels/follow ups are becoming more frequent.
 
