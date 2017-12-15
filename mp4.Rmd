@@ -18,6 +18,7 @@ library(mdsr)
 library(RMySQL)
 library(ggplot2)
 library(knitr)
+library(ggridges)
 
 db <- dbConnect_scidb(dbname = "imdb")
 
@@ -231,3 +232,4 @@ Although Hollywood is putting out less sequels as a percentage on the whole, tha
 [^3]:From website description: 'The Artifice is an online magazine that covers a wide spectrum of art forms.'
 [^4]:https://the-artifice.com/original-films-in-hollywood-deconstructing-the-backlash-against-american-cinema/
 [^5]:http://www.nytimes.com/2011/12/29/movies/sequels-ruled-hollywood-in-2011.html
+[^6]: Github repository: https://github.com/sophieml/sds192-mp4
